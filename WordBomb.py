@@ -1,9 +1,8 @@
 # all imports
 import pygame # used to run the gmae
 import random # used to get random words and characters for question
-import enchant # used to check input word
-
-d = enchant.Dict("en_UK") # doesn't work?
+from spellchecker import SpellChecker # uses to check validity of words
+spell = SpellChecker()
 
 # pygame setup
 pygame.init()
@@ -23,9 +22,10 @@ number generator to get a set of consecutive characters in that word?
 
 to test words, run them through a spell check which invalidates the word
 if it can be corrected or isn't recognisable?
-'''
+'''   
 
-
+incorrect = False
+incorrectTimer = 0
 
 # main game loop
 while running:
@@ -39,21 +39,35 @@ while running:
             event.key -= 97 # letter A starts at 97, this reduces to 0 so it can be used for allLetters[]
             if event.key == -89: # backspace
                 inputWord = inputWord[:-1] # slice notation to remove last character
-            elif event.key <= 23 and event.key >= 0: # makes sure it's alphabetical
+            elif event.key <= 25 and event.key >= 0: # makes sure it's alphabetical
                 inputWord += allLetters[event.key]
             else: # if any other key is pressed, attempt submit entered word
-                if d.check(inputWord) == True:
-                    print ("True")
+                if spell.correction(inputWord) == inputWord and len(inputWord) >= 3: # the spellcheck has a problem with 2 letter words, always allowing them
+                    inputWord = ""
                 else:
-                    print ("False")
+                    incorrect = True
+                    incorrectTimer = 0
+    
+    xPosition = (screenWidth - 17*len(inputWord))/2 # default x and y position of word
+    yPosition = screenHeight/2
+    if incorrect == True: # turns word black and shakes for 0.5s if word is incorrect
+        colour = (0,0,0)
+        incorrectTimer += 1
+        xPosition, yPosition = (xPosition + random.randint(-5,5)), (yPosition + random.randint(-1,1))
+        if incorrectTimer >= 30: # 30f = 0.5s
+            incorrect = False
+            incorrectTimer = 0
+    else:
+        colour = (255,255,255)
     
     font = pygame.font.SysFont('Consolas', 30) # monospace font so that text centering is easier
-    text_surface = font.render(inputWord, True, (255, 255, 255))
+    text_surface = font.render(inputWord, True, (colour))
     
     # draw to screen
     screen.fill("red")
-    screen.blit(text_surface, ((screenWidth - 17*len(inputWord))/2,screenHeight/2)) # pos (x, y)
+    screen.blit(text_surface, (xPosition , yPosition))
     pygame.display.flip()
+    
     clock.tick(60)
 
 pygame.quit()
