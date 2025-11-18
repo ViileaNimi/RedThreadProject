@@ -14,15 +14,7 @@ running = True
 
 allLetters = "abcdefghijklmnopqrstuvwxyz"
 inputWord = ("")
-
-'''
-to get a valid question, use english-words to generate a list of words,
-use a random number generator to pick a word at random, then use another random
-number generator to get a set of consecutive characters in that word?
-
-to test words, run them through a spell check which invalidates the word
-if it can be corrected or isn't recognisable?
-'''   
+allEnteredWords = []
 
 def generateCharacters(length): # Generates a string of characters that has at least 1 valid word containing it
     while True:
@@ -32,8 +24,11 @@ def generateCharacters(length): # Generates a string of characters that has at l
             generatedString += random.choice(allLetters)
         generatedWord = spell.correction(generatedString) # generated string is put through spell correction to find a valid word
         if generatedWord != None:
-            start = random.randint(0, len(generatedWord)-length)
-            return (generatedWord[start:start+length])
+            if generatedWord.find("'") == -1: # some generated words contained ', e.g. (www's), which then generated characters impossible to type
+                if len(generatedWord) > 3: # words with length <=3 aren't allowed to be submitted, so they shouldn't be allowed to generate characters
+                    start = random.randint(0, len(generatedWord)-length)
+                    print (generatedWord)
+                    return (generatedWord[start:start+length])
         
 
 incorrect = False
@@ -42,6 +37,7 @@ incorrectTimer = 0
 generatedCharacters = generateCharacters(2)
 round = 0 # increments by 1 when a round ends, incorrect or correct word used
 roundTimer = 0
+lives = 3
 
 # main game loop
 while running:
@@ -61,8 +57,11 @@ while running:
                 if spell.correction(inputWord) == inputWord and len(inputWord) >= 3: # the spellcheck has a problem with 2 letter words, always allowing them
                     for i in range(len(inputWord)): # loops through the word
                         if inputWord[i:i+2] == generatedCharacters: # compares every collection of [length] characters to the required characters needed
-                            correct = True
-                            inputWord = ""
+                            if inputWord not in allEnteredWords: # checks if word already given before
+                                correct = True
+                                allEnteredWords.append(str(inputWord))
+                                inputWord = ""
+                            
                         else:
                             pass
                     if correct != True:
@@ -81,6 +80,9 @@ while running:
         round += 1
         roundTimer = 0
         incorrect = True
+        lives -= 1
+        if lives == 0:
+            pygame.quit()
     
     xPosition = (screenWidth - 17*len(inputWord))/2 # default x and y position of word
     yPosition = screenHeight/2
@@ -101,12 +103,24 @@ while running:
     font = pygame.font.SysFont('Consolas', 30) # monospace font so that text centering is easier
     inputWordTextSurface = font.render(inputWord, True, (colour))
         
-    generatedCharactersTextSurface = font.render(generatedCharacters, True, (colour))
+    GCTextSurface = font.render(generatedCharacters, True, (colour))
     
     # draw to screen
-    screen.fill("red")
+    
+    screen.fill("red") # background color
+    # these 2 rects form the countdown timer, showing how much time is left
+    pygame.draw.rect(screen, (255,255,255), pygame.Rect(((screenWidth-600)/2), (screenHeight/2 + 100), 600, 10))
+    pygame.draw.rect(screen, (0,0,0), pygame.Rect(((screenWidth-600)/2 + (600 - roundTimer)), (screenHeight/2 + 100), roundTimer, 10))
+    
+    heartIcon = pygame.image.load("heart.png").convert()
+    
+    # prints 3 heart icons, evenly spaced, above the timer
+    for i in range(lives):
+        screen.blit(heartIcon, (((screenWidth-35*lives)/2+35*i), (screenHeight/2+50)))
+    
+    
     screen.blit(inputWordTextSurface, (xPosition , yPosition))
-    screen.blit(generatedCharactersTextSurface, (GCxPosition, GCyPosition))
+    screen.blit(GCTextSurface, (GCxPosition, GCyPosition))
     pygame.display.flip()
     
     roundTimer += 1
