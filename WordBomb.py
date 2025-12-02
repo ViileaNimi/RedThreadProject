@@ -1,8 +1,30 @@
 # all imports
-import pygame # used to run the gmae
-import random # used to get random words and characters for question
+# used for actually running the game
+import pygame 
+import random 
+# used for multiplayer
+import socket
+import threading
+import sys
+# spellcheck
 from spellchecker import SpellChecker # uses to check validity of words
 spell = SpellChecker()
+
+
+# server setup
+# https://www.techwithtim.net/tutorials/python-online-game-tutorial/server
+# tutorial in case this is wrong
+server = "test"
+port = 5555
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+try:
+    s.bind((server,port))
+except socket.error as error:
+    str(error)
+
+s.listen(2)
 
 # pygame setup
 pygame.init()
@@ -12,29 +34,35 @@ screen = pygame.display.set_mode((screenWidth,screenHeight))
 clock = pygame.time.Clock()
 running = True
 
-allLetters = "abcdefghijklmnopqrstuvwxyz"
+
+# word setup
+allLetters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
+letterFrequency = [0.0797, 0.0203, 0.0413, 0.0381, 0.1174, 0.0135, 0.0284, 0.0215, 0.0865, 0.0020, 0.0088, 0.0535, 0.0270, 0.0742, 0.0594, 0.0277, 0.0019, 0.0744, 0.0815, 0.0676, 0.0322, 0.0109, 0.0085, 0.0029, 0.0165, 0.0045]
 inputWord = ("")
 allEnteredWords = []
 
-def generateCharacters(length): # Generates a string of characters that has at least 1 valid word containing it
+def generateCharacters(lengthCharacters, lengthWord): # Generates a string of characters that has at least 1 valid word containing it
+    # lengthWord is more of a suggestion than a restriction, generatedString will be of length lengthWord but spellcheck may make a correction to a word of similar, but not the same length
+    # i.e. lengthWord = 5 may return words of length 4,5,6
+    
+    # random.choices() solves previously seen lag, as there are less loops spent generating words with unlikely characters such as x,y,z that would be very unlikely to generate a real word
+    
     while True:
-        generatedString = ""
-        lengthWord = random.randint(4,9) # uses this to generate a string of characters with length of 4-9
-        for i in range(lengthWord):
-            generatedString += random.choice(allLetters)
+        generatedString = random.choices(allLetters, letterFrequency, k=lengthWord) # letters are weighted by how often they appear in common words
+        generatedString = ''.join(generatedString) # turns the list returned by random.choices() into a string which can be spellchecked
         generatedWord = spell.correction(generatedString) # generated string is put through spell correction to find a valid word
         if generatedWord != None:
             if generatedWord.find("'") == -1: # some generated words contained ', e.g. (www's), which then generated characters impossible to type
                 if len(generatedWord) > 3: # words with length <=3 aren't allowed to be submitted, so they shouldn't be allowed to generate characters
-                    start = random.randint(0, len(generatedWord)-length)
+                    start = random.randint(0, len(generatedWord)-lengthCharacters)
                     print (generatedWord)
-                    return (generatedWord[start:start+length])
+                    return (generatedWord[start:start+lengthCharacters])
         
 
 incorrect = False
 correct = False
 incorrectTimer = 0
-generatedCharacters = generateCharacters(2)
+generatedCharacters = generateCharacters(2, 5)
 round = 0 # increments by 1 when a round ends, incorrect or correct word used
 roundTimer = 0
 lives = 3
@@ -61,18 +89,19 @@ while running:
                                 correct = True
                                 allEnteredWords.append(str(inputWord))
                                 inputWord = ""
-                            
                         else:
                             pass
+                        
                     if correct != True:
                         incorrect = True
                         incorrectTimer = 0
+                        
                 else:
                     incorrect = True
                     incorrectTimer = 0
     
     if correct == True:
-        generatedCharacters = str(generateCharacters(2))
+        generatedCharacters = str(generateCharacters(2, 5))
         round += 1
         roundTimer = 0
         correct = False
